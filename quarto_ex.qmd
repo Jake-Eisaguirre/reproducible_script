@@ -33,3 +33,69 @@ library(DBI)
 
 ```
 
+# Loading Data
+
+## Reproducible File Paths - Relative File Path: `here` Package
+
+### Make `data` Folder, Connect to DB, Query Data, Save Data for offline use
+```{r}
+
+# Make Data Folder
+if (!dir.exists("data")){
+  dir.create(here("data"))
+}
+
+# DB Connection 
+ribbitr_connection <- dbConnect(drv = dbDriver("Postgres"),
+                                host = Sys.getenv("aws_host"),
+                                port = Sys.getenv("aws_port"),
+                                dbname = Sys.getenv("aws_dbname"),
+                                user = Sys.getenv("aws_user"),
+                                password = Sys.getenv("aws_password"))
+
+# Set search_path to `survey_data` schema
+dbExecute(ribbitr_connection, "set search_path = 'survey_data'")
+
+# SQL query
+sql <- "select l.location, r.region, s.site, v.date, v.survey_time, s2.duration_minutes, 
+        c.species_capture, c.svl_mm
+        from location l
+        join region r on l.location_id = r.location_id
+        join site s on r.region_id = s.region_id
+        join visit v on s.site_id = v.site_id
+        join survey s2 on v.visit_id = s2.visit_id
+        join capture c on s2.survey_id = c.survey_id"
+
+# Send Query to DB
+clean_data <- dbGetQuery(ribbitr_connection, sql)
+
+# Save Data for offline use
+write_csv(clean_data, here("data", "clean_data.csv"))
+
+rm(clean_data)
+```
+
+### Load Data Offline
+```{r}
+
+clean_data <- read_csv(here("data", "clean_data.csv"))
+
+```
+
+
+## Non-Reproducible File Paths - Direct File Paths
+
+### Load Data Offline - Sends `clean_data.csv` Through Email
+```{r}
+
+# Set working directory
+setwd("/Users/JaketheBoss/Documents/RIBBiTR/reproducible_script")
+
+# Throw Error due to no "data" folder or csv in a different location
+clean_data <- read_csv("data/clean_data.csv")
+
+# Or Direct File Path
+clean_data <- read_csv("/Users/JaketheBoss/Documents/RIBBiTR/reproducible_script/data/clean_data.csv")
+
+```
+
